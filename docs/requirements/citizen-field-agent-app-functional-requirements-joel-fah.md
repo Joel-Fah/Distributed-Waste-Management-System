@@ -50,11 +50,32 @@ stateDiagram-v2
     VERIFIED --> COLLECTION_REQUESTED: SPF request created
     OPEN --> COLLECTION_REQUESTED: SPF request created
     COLLECTION_REQUESTED --> COLLECTED: SPF request COLLECTED
-    COLLECTION_REQUESTED --> OPEN: SPF request REJECTED or CANCELLED
+    COLLECTION_REQUESTED --> OPEN: SPF request REJECTED or CANCELLED, location was not verified
+    COLLECTION_REQUESTED --> VERIFIED: SPF request REJECTED or CANCELLED, location was verified
     COLLECTED --> OPEN: citizen or agent reports waste is back
 ```
 
-A report that is still in the device outbox has no server status yet. It is shown with its outbox state (queued, sending, failed), never with one of the states above.
+| State | Meaning |
+|-------|---------|
+| OPEN | A report was accepted by the server: waste is present at this location. |
+| VERIFIED | A field agent has confirmed on site that the waste is real. |
+| INVALID | The report was wrong (spam, wrong place). It is hidden from the public map but kept, never deleted silently. |
+| COLLECTION_REQUESTED | An SPF request exists and is not finished (request status REQUESTED, ASSIGNED or IN_PROGRESS). |
+| COLLECTED | The SPF request reached COLLECTED: the waste has been removed. |
+
+| Transition | Trigger | Requirements |
+|------------|---------|--------------|
+| (start) to OPEN | The server accepts a submitted report. | FR-RA-23 |
+| OPEN to VERIFIED, OPEN to INVALID | A field agent checks the report on site and confirms or rejects it with a reason. | FR-RA-27 |
+| OPEN or VERIFIED to COLLECTION_REQUESTED | An authorised user creates an SPF request. | FR-RA-54 |
+| COLLECTION_REQUESTED to COLLECTED | The SPF marks the request COLLECTED. | FR-RA-53 |
+| COLLECTION_REQUESTED to OPEN or VERIFIED | The SPF request is rejected or cancelled. The location returns to the state it had before the request, so a field agent's verification is not lost and the waste stays visible on the map. | FR-RA-53 |
+| COLLECTED to OPEN | The original reporter or a field agent reports that the waste is still there or has come back. | FR-RA-58 |
+
+Two rules complete the diagram:
+
+- A report that is still in the device outbox has no server status yet. It is shown with its outbox state (queued, sending, failed), never with one of the states above.
+- Staleness is not a state. A location with no report or confirmation for longer than the staleness threshold (7 days per the README) is drawn grey on the map whatever its state (FR-RA-47).
 
 ---
 
